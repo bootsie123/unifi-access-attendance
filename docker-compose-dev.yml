@@ -7,3 +7,13 @@ services:
       target: development
     ports:
       - "3000:3000"
+    environment:
+      SCHOOLPASS_USERNAME: username
+      SCHOOLPASS_PASSWORD: password
+      SCHOOLPASS_DISMISSAL_LOCATION_REGEX: ""
+      UNIFI_ACCESS_API_TOKEN: api-token
+      UNIFI_ACCESS_SERVER: https://server:12445
+      UNIFI_ACCESS_THRESHOLD: 10
+      ATTENDANCE_START: 5am
+      ATTENDANCE_END: 8am
+      DRY_RUN: true

@@ -25,12 +25,56 @@ export interface UnfiAccessGetSystemLogsOptions {
   pageSize?: number;
 }
 
+export interface UnifiAccessActor {
+  alternate_id: string;
+  alternate_name: string;
+  display_name: string;
+  id: string;
+  type: string;
+}
+
+export interface UnifiAccessEvent {
+  display_message: string;
+  published: number;
+  reason: string;
+  result: string;
+  type: string;
+}
+
+export interface UnifiAccessAuthentication {
+  credential_provider: string;
+  issuer: string;
+}
+
+export interface UnifiAccessSystemLog {
+  actor: UnifiAccessActor;
+  authentication: UnifiAccessAuthentication;
+  event: UnifiAccessEvent;
+  target: UnifiAccessActor[];
+}
+
+export interface UnifiAccessHit<T> {
+  "@timestamp": string;
+  _id: string;
+  _source: T;
+  tag: string;
+}
+
+export interface UnifiAccessHits<T> {
+  hits: UnifiAccessHit<T>[];
+}
+
+export interface UnifiAccessPagination {
+  page_num: number;
+  page_size: number;
+  total: number;
+}
+
 export interface UnifiAccessResponse<T> {
   code: string;
   data: T;
   msg?: string;
-  page?: number;
-  total?: number;
+  pagination?: UnifiAccessPagination;
 }
 
 export enum UnfiAccessTopic {
@@ -46,7 +90,7 @@ export enum UnfiAccessTopic {
 /**
  * Responsible for handling all communication with the Unifi Access API
  */
-export class UnfiAccessAPI {
+export class UnifiAccessAPI {
   /** The main logging instance */
   private logger: winston.Logger;
 
@@ -104,7 +148,9 @@ export class UnfiAccessAPI {
    * @param type The attendance type to use
    * @param studentId The id of the student
    */
-  async getSystemLogs(options: UnfiAccessGetSystemLogsOptions): Promise<any> {
+  async getSystemLogs(
+    options: UnfiAccessGetSystemLogsOptions
+  ): Promise<UnifiAccessResponse<UnifiAccessHits<UnifiAccessSystemLog>>> {
     const res = await this.http.post(
       "system/logs",
       {

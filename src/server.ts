@@ -1,63 +1,85 @@
-import { SchoolPassAPI, StudentAttendanceType } from "./lib/SchoolPass";
-
-import logger from "./lib/Logger";
 import environment from "./environment";
-import { UnfiAccessAPI, UnfiAccessTopic } from "./lib/UnifiAccess";
-
-const schoolpass = new SchoolPassAPI();
-const unifiAccess = new UnfiAccessAPI({
-  server: environment.unifi.server
-});
+import logger from "./lib/Logger";
+import { StudentAttendanceType } from "./lib/SchoolPassAPI";
+import SchoolPassService from "./services/SchoolPassService";
+import UnifiAccessService from "./services/UnifiAccessService";
 
 (async () => {
   try {
-    const date = new Date();
+    const schoolpass = new SchoolPassService();
+    const unifiAccess = new UnifiAccessService();
 
-    date.setHours(16);
-    date.setMinutes(0);
-    date.setSeconds(0);
+    await schoolpass.init();
 
-    const date2 = new Date(date.getTime());
+    logger.info(`Fetching students from SchoolPass...`);
 
-    date2.setMinutes(3);
+    const students = await schoolpass.getStudents();
 
-    const data = await unifiAccess.getSystemLogs({
-      topic: UnfiAccessTopic.DoorOpenings,
-      since: Math.floor(date.getTime() / 1000),
-      until: Math.floor(date2.getTime() / 1000),
-      pageNum: 1,
-      pageSize: 25
-    });
+    const studentMap = new Map(
+      students.map(x => [x.fullName.toLowerCase(), x])
+    );
 
-    for (const hit of data.data.hits) {
-      console.log(hit);
+    logger.info(
+      `Found ${studentMap.size} students from SchoolPass with dismissal locations matching "${environment.schoolPass.dismissalLocationRegex}"`
+    );
+
+    const start = environment.attendanceStart;
+    const end = environment.attendanceEnd;
+
+    logger.info(
+      `Querying Unifi Access door logs between ${start.toDate().toTimeString()} and ${end.toDate().toTimeString()}...`
+    );
+
+    const logs = await unifiAccess.getDoorLogs(start, end);
+    const actors = new Set(
+      logs.map(log => log._source.actor.display_name.toLowerCase())
+    );
+
+    logger.info(
+      `Found ${logs.length} door access events from ${actors.size} unique actors`
+    );
+
+    logger.info("Processing attendance...");
+
+    const totalStudents = studentMap.size;
+
+    const toTitleCase = (str: string) => {
+      const parts = str.toLowerCase().split(" ");
+
+      return parts.map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(" ");
+    };
+
+    for (const name of actors) {
+      if (studentMap.has(name)) {
+        logger.debug(`Marking ${toTitleCase(name)} as present!`);
+
+        studentMap.delete(name);
+      }
     }
-    /*
-    await schoolpass.init(
-      environment.schoolPass.username,
-      environment.schoolPass.password
+
+    const absent = studentMap.size;
+    const present = totalStudents - absent;
+
+    logger.info(
+      `Attendance Report:\n\tPresent: ${present}\n\tAbsent: ${absent}`
     );
 
-    const classrooms = await schoolpass.getAttendanceClassrooms();
+    if (present < environment.unifi.threshold) {
+      logger.warn(
+        `Attendance threshold of ${environment.unifi.threshold} not met! No further action will be taken`
+      );
+    } else {
+      logger.info(
+        `Attendance threshold of ${environment.unifi.threshold} met! Marking students as absent...`
+      );
 
-    const testClass = classrooms.find(classroom =>
-      classroom.dismissalLocationName.includes("Test Dismissal Location")
-    );
+      await schoolpass.markStudents(
+        StudentAttendanceType.Absent,
+        studentMap.values()
+      );
 
-    if (!testClass) return;
-
-    const attendance = await schoolpass.getStudentAttendance(
-      testClass.dismissalLocationId,
-      testClass.date
-    );
-
-    const testStudent = attendance[0];
-
-    await schoolpass.setStudentAttendance(
-      StudentAttendanceType.Absent,
-      testStudent.studentId
-    );
-    */
+      logger.info(`${studentMap.size} students marked as absent!`);
+    }
   } catch (err) {
     logger.error("Error with server:", err);
   }
