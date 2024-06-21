@@ -16,4 +16,5 @@ services:
       UNIFI_ACCESS_THRESHOLD: 10
       ATTENDANCE_START: 5am
       ATTENDANCE_END: 8am
+      SCHEDULE: 0 8 * * 1-5
       DRY_RUN: false

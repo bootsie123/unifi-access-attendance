@@ -4,6 +4,9 @@ import logger from "../lib/Logger";
 
 const dryRun = environment.dryRun;
 
+/**
+ * Outlines a simplified student
+ */
 export interface Student {
   studentId: number;
   firstName: string;
@@ -11,16 +14,26 @@ export interface Student {
   fullName: string;
 }
 
+/**
+ * Handles all interactions with the SchoolPass API
+ */
 export default class SchoolPassService {
   private schoolpass = new SchoolPassAPI();
 
-  async init() {
+  /**
+   * Initializes the service
+   */
+  async init(): Promise<void> {
     await this.schoolpass.init(
       environment.schoolPass.username,
       environment.schoolPass.password
     );
   }
 
+  /**
+   * Retrieves students from SchoolPass
+   * @returns An array of {@link Student} objects
+   */
   async getStudents(): Promise<Student[]> {
     const classrooms = await this.schoolpass.getAttendanceClassrooms();
 
@@ -60,6 +73,11 @@ export default class SchoolPassService {
     return students.flat();
   }
 
+  /**
+   * Updates the attendance of the given students
+   * @param type The attendance mark type
+   * @param students An array of students to update the attendance of
+   */
   async markStudents(
     type: StudentAttendanceType,
     students: Student[] | IterableIterator<Student>

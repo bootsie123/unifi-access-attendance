@@ -8,6 +8,9 @@ import {
 } from "../lib/UnifiAccessAPI";
 import environment from "../environment";
 
+/**
+ * Handles all interactions with the Unifi Access API
+ */
 export default class UnifiAccessService {
   private unifiAccess = new UnifiAccessAPI({
     server: environment.unifi.server
@@ -15,7 +18,16 @@ export default class UnifiAccessService {
 
   private dateToSeconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
-  async getDoorLogs(start: Moment, end: Moment) {
+  /**
+   * Retrieves the door logs from the specified time window
+   * @param start The start of the window
+   * @param end The end of the window
+   * @returns An array of logs
+   */
+  async getDoorLogs(
+    start: Moment,
+    end: Moment
+  ): Promise<UnifiAccessHit<UnifiAccessSystemLog>[]> {
     const pageSize = 50;
 
     let pageNum = 1;

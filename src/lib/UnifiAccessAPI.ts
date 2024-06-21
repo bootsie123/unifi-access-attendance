@@ -16,6 +16,9 @@ export interface UnifiAccessAPIOptions {
   server: string;
 }
 
+/**
+ * Outlines the options when getting system logs
+ */
 export interface UnfiAccessGetSystemLogsOptions {
   topic: UnfiAccessTopic;
   since?: number;
@@ -25,6 +28,9 @@ export interface UnfiAccessGetSystemLogsOptions {
   pageSize?: number;
 }
 
+/**
+ * Outlines an Actor in Unifi Access
+ */
 export interface UnifiAccessActor {
   alternate_id: string;
   alternate_name: string;
@@ -33,6 +39,9 @@ export interface UnifiAccessActor {
   type: string;
 }
 
+/**
+ * Outlines an event in Unifi Access
+ */
 export interface UnifiAccessEvent {
   display_message: string;
   published: number;
@@ -41,11 +50,17 @@ export interface UnifiAccessEvent {
   type: string;
 }
 
+/**
+ * Outlines authentication info in Unifi Access
+ */
 export interface UnifiAccessAuthentication {
   credential_provider: string;
   issuer: string;
 }
 
+/**
+ * Outlines expected info from the Unifi Access system logs
+ */
 export interface UnifiAccessSystemLog {
   actor: UnifiAccessActor;
   authentication: UnifiAccessAuthentication;
@@ -53,6 +68,9 @@ export interface UnifiAccessSystemLog {
   target: UnifiAccessActor[];
 }
 
+/**
+ * Outlines a search hit in Unifi Access
+ */
 export interface UnifiAccessHit<T> {
   "@timestamp": string;
   _id: string;
@@ -60,16 +78,25 @@ export interface UnifiAccessHit<T> {
   tag: string;
 }
 
+/**
+ * Outlines an array of hits in Unifi Access
+ */
 export interface UnifiAccessHits<T> {
   hits: UnifiAccessHit<T>[];
 }
 
+/**
+ * Outlines the returned pagination object in Unifi Access
+ */
 export interface UnifiAccessPagination {
   page_num: number;
   page_size: number;
   total: number;
 }
 
+/**
+ * Outlines the standard response in Unifi Access
+ */
 export interface UnifiAccessResponse<T> {
   code: string;
   data: T;
@@ -77,6 +104,9 @@ export interface UnifiAccessResponse<T> {
   pagination?: UnifiAccessPagination;
 }
 
+/**
+ * Defines all possible topics that can be used when searching the system logs
+ */
 export enum UnfiAccessTopic {
   All = "all",
   Critical = "critical",
@@ -144,9 +174,9 @@ export class UnifiAccessAPI {
   }
 
   /**
-   * Sets the classroom attendance for the specified student
-   * @param type The attendance type to use
-   * @param studentId The id of the student
+   * Retrieves the system logs from Unifi Access
+   * @param options The options to use when retrieving the logs
+   * @returns The found logs
    */
   async getSystemLogs(
     options: UnfiAccessGetSystemLogsOptions

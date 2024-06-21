@@ -18,6 +18,7 @@ export default {
   },
   attendanceStart: moment(process.env.ATTENDANCE_START, timeFormat).utc(),
   attendanceEnd: moment(process.env.ATTENDANCE_END, timeFormat).utc(),
+  schedule: process.env.SCHEDULE || "",
   dryRun: (() => {
     if (process.env.DRY_RUN === "true") return true;
 
