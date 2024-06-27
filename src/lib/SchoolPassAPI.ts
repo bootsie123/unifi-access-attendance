@@ -139,7 +139,7 @@ export class SchoolPassAPI {
       async err => {
         const originalReq = err.config;
 
-        if (err.response.status === 401 && !originalReq._retry) {
+        if (err.response?.status === 401 && !originalReq._retry) {
           originalReq._retry = true;
 
           this.logger.info(err.response.data);
@@ -163,7 +163,7 @@ export class SchoolPassAPI {
           } catch {
             this.logger.error("Unable to auto refresh authentication token");
           }
-        } else if (err.response.status === 429) {
+        } else if (err.response?.status === 429) {
           const retryAfter = parseInt(err.response.headers["retry-after"]) + 3;
 
           this.logger.warn(

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build:
@@ -16,5 +14,6 @@ services:
       UNIFI_ACCESS_THRESHOLD: 10
       ATTENDANCE_START: 5am
       ATTENDANCE_END: 8am
-      SCHEDULE: 0 8 * * 1-5
+      SCHOOL_DISMISSAL_TIME: 3pm
+      UPDATE_INTERVAL: 30
       DRY_RUN: true

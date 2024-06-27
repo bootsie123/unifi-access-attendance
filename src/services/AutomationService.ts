@@ -1,9 +1,10 @@
 import schedule, { JobCallback } from "node-schedule";
+import moment from "moment";
 
 import logger from "../lib/Logger";
 import { StudentAttendanceType } from "../lib/SchoolPassAPI";
 import environment from "../environment";
-import SchoolPassService from "./SchoolPassService";
+import SchoolPassService, { Student } from "./SchoolPassService";
 import UnifiAccessService from "./UnifiAccessService";
 
 process.on("SIGINT", () => {
@@ -17,13 +18,30 @@ export default class AutomationService {
   private static scheduleLogger = logger.child({ label: "Scheduler" });
 
   /**
+   * Converts a string to Title Case
+   * @param str The string to convert
+   * @returns The string in title case format
+   */
+  private static toTitleCase(str: string) {
+    const parts = str.toLowerCase().split(" ");
+
+    return parts.map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(" ");
+  }
+
+  /**
    * Schedules the specified job
    * @param name The name of the job
-   * @param cron The cron schedule to use
+   * @param spec The schedule to use
    * @param jobFunc The function to invoke
+   * @returns The scheduled job
    */
-  static scheduleJob(name: string, cron: string, jobFunc: JobCallback): void {
-    const job = schedule.scheduleJob(name, cron, jobFunc);
+  static scheduleJob(
+    name: string,
+    spec: schedule.Spec,
+    jobFunc: JobCallback,
+    runImmediately: boolean = !environment.production
+  ): schedule.Job {
+    const job = schedule.scheduleJob(name, spec, jobFunc);
 
     job
       .on("scheduled", (next: Date) => {
@@ -36,7 +54,7 @@ export default class AutomationService {
         this.scheduleLogger.error("Error running job:", err);
       });
 
-    if (!environment.production) {
+    if (runImmediately) {
       this.scheduleLogger.info(
         "Running in development environment. Invoking job immediately..."
       );
@@ -54,6 +72,8 @@ export default class AutomationService {
           );
         });
     }
+
+    return job;
   }
 
   /**
@@ -97,15 +117,11 @@ export default class AutomationService {
 
     const totalStudents = studentMap.size;
 
-    const toTitleCase = (str: string) => {
-      const parts = str.toLowerCase().split(" ");
-
-      return parts.map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(" ");
-    };
-
     for (const name of actors) {
       if (studentMap.has(name)) {
-        logger.debug(`Marking ${toTitleCase(name)} as present!`);
+        logger.debug(
+          `Marking ${AutomationService.toTitleCase(name)} as present!`
+        );
 
         studentMap.delete(name);
       }
@@ -133,6 +149,84 @@ export default class AutomationService {
       );
 
       logger.info(`${studentMap.size} students marked as absent!`);
+
+      AutomationService.scheduleJob(
+        "Late Arrivals Handler",
+        {
+          end: environment.schoolDismissal.toDate(),
+          rule: `*/${environment.updateInterval} * * * *`
+        },
+        AutomationService.handleLateArrivals.bind(this, studentMap),
+        false
+      );
+    }
+  }
+
+  /**
+   * Finds late arrivals and updates their attendance in SchoolPass
+   * @param absentStudents A map of students currentl marked absent
+   */
+  private static async handleLateArrivals(
+    absentStudents: Map<string, Student>
+  ): Promise<void> {
+    const schoolpass = new SchoolPassService();
+    const unifiAccess = new UnifiAccessService();
+
+    await schoolpass.init();
+
+    logger.info(
+      `Recieved ${absentStudents.size} students still marked as absent`
+    );
+
+    const start = environment.attendanceEnd;
+    const end = moment();
+
+    logger.info(
+      `Querying Unifi Access door logs between ${start.toDate().toTimeString()} and ${end.toDate().toTimeString()}...`
+    );
+
+    const logs = await unifiAccess.getDoorLogs(start, end);
+    const actors = new Set(
+      logs.map(log => log._source.actor.display_name.toLowerCase())
+    );
+
+    logger.info(
+      `Found ${logs.length} door access events from ${actors.size} unique actors`
+    );
+
+    logger.info("Processing late arrivals...");
+
+    const present: Student[] = [];
+
+    for (const name of actors) {
+      const student = absentStudents.get(name);
+
+      if (student) {
+        logger.debug(
+          `Marking ${AutomationService.toTitleCase(name)} as present!`
+        );
+
+        present.push(student);
+        absentStudents.delete(name);
+      }
+    }
+
+    absentStudents.delete("(test) test student");
+
+    logger.info(
+      `Updated Attendance Report:\n\tNew Late Arrivals: ${present.length}`
+    );
+
+    await schoolpass.markStudents(StudentAttendanceType.Present, present);
+
+    logger.info(`${present.length} students now marked as present!`);
+
+    if (absentStudents.size < 1) {
+      logger.info(
+        "All students now marked present! Canceling future late arrival checks..."
+      );
+
+      schedule.scheduledJobs["Late Arrivals Handler"].cancel();
     }
   }
 }

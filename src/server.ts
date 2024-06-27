@@ -1,3 +1,4 @@
+import { Range } from "node-schedule";
 import environment from "./environment";
 import logger from "./lib/Logger";
 import AutomationService from "./services/AutomationService";
@@ -12,6 +13,10 @@ process
 
 AutomationService.scheduleJob(
   "Automated Attendance",
-  environment.schedule,
+  {
+    dayOfWeek: new Range(1, 5),
+    hour: environment.attendanceEnd.hour(),
+    minute: environment.attendanceEnd.minute() + 1
+  },
   AutomationService.runAttendance
 );

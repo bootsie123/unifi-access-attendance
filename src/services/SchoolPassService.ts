@@ -42,17 +42,17 @@ export default class SchoolPassService {
     for (const classroom of classrooms) {
       promises.push(
         new Promise<Student[]>(async resolve => {
-          const attendance = await this.schoolpass.getStudentAttendance(
-            classroom.dismissalLocationId,
-            classroom.date
-          );
-
           if (
             classroom.dismissalLocationName.search(
               environment.schoolPass.dismissalLocationRegex
             ) < 0
           )
             return resolve([]);
+
+          const attendance = await this.schoolpass.getStudentAttendance(
+            classroom.dismissalLocationId,
+            classroom.date
+          );
 
           resolve(
             attendance.map(student => {
