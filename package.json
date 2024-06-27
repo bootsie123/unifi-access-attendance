@@ -1,7 +1,7 @@
 {
     "name": "unifi-access-attendance",
     "version": "0.0.1",
-    "description": "Handles daily attendance using badge scans from Unifi Access and syncs to School Pass",
+    "description": "An automated way to handle daily attendance using badge scans from Unifi Access with SchoolPass",
     "scripts": {
         "start": "node dist/server.js",
         "dev": "nodemon src/server.ts",
