@@ -1,5 +1,9 @@
 # Unifi Access Attendance
 
+[![Docker Publish](https://github.com/bootsie123/unifi-access-attendance/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/bootsie123/unifi-access-attendance/actions/workflows/docker-publish.yml)
+[![Version](https://img.shields.io/github/package-json/v/bootsie123/unifi-access-attendance)](https://github.com/bootsie123/unifi-access-attendance/blob/main/package.json)
+[![License](https://img.shields.io/github/license/bootsie123/unifi-access-attendance)](https://github.com/bootsie123/unifi-access-attendance/blob/main/LICENSE)
+
 An automated way to handle daily attendance using badge scans from Unifi Access with SchoolPass.
 
 Simply install the application, configure the settings to your liking, and watch it go! Any badge scans made inside of the `ATTENDANCE_START` and `ATTENDANCE_END` window will cause the matching student in SchoolPass to remain present while everyone else will get marked as absent. If a student is absent and scans in after the window but before the `SCHOOL_DISMISSAL_TIME`, they will get marked as a late arrival.
