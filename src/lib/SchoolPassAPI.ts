@@ -35,8 +35,10 @@ export interface SchoolPassUserInfo {
  * Outlines a SchoolPass user
  */
 export interface SchoolPassUser {
-  internalId: number;
-  userType: number;
+  user: {
+    internalId: number;
+    userType: number;
+  };
 }
 
 /**
@@ -151,8 +153,8 @@ export class SchoolPassAPI {
           try {
             const token = await this.authenticate(
               this.schoolCode,
-              this.user.userType,
-              this.user.internalId,
+              this.user.user.userType,
+              this.user.user.internalId,
               this.password
             );
 
@@ -238,8 +240,8 @@ export class SchoolPassAPI {
 
       const token = await this.authenticate(
         this.schoolCode,
-        userInfo.userType,
-        userInfo.internalId,
+        userInfo.user.userType,
+        userInfo.user.internalId,
         password
       );
 
@@ -272,7 +274,8 @@ export class SchoolPassAPI {
         schoolCode,
         userType,
         userId,
-        password
+        password,
+        authType: "credentials"
       });
 
       return res.data;
@@ -295,12 +298,11 @@ export class SchoolPassAPI {
     username: string,
     password: string
   ): Promise<SchoolPassUser[]> {
-    const res = await this.http.get("User", {
-      params: {
-        schoolCode,
-        login: username,
-        password
-      }
+    const res = await this.http.post("Auth/users", {
+      schoolCode,
+      authType: "credentials",
+      email: username,
+      password
     });
 
     return res.data;
@@ -366,8 +368,8 @@ export class SchoolPassAPI {
       {
         params: {
           studentId,
-          userId: this.user.internalId,
-          userType: this.user.userType
+          userId: this.user.user.internalId,
+          userType: this.user.user.userType
         }
       }
     );
