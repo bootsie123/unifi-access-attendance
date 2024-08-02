@@ -210,9 +210,7 @@ export default class AutomationService {
         absentStudents.delete(name);
       }
     }
-
-    absentStudents.delete("(test) test student");
-
+    
     logger.info(
       `Updated Attendance Report:\n\tNew Late Arrivals: ${present.length}`
     );
