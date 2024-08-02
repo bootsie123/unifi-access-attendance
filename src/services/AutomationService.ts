@@ -203,7 +203,7 @@ export default class AutomationService {
 
       if (student) {
         logger.debug(
-          `Marking ${AutomationService.toTitleCase(name)} as present!`
+          `Marking ${AutomationService.toTitleCase(name)} as late arrival!`
         );
 
         present.push(student);
@@ -219,7 +219,7 @@ export default class AutomationService {
 
     await schoolpass.markStudents(StudentAttendanceType.Present, present);
 
-    logger.info(`${present.length} students now marked as present!`);
+    logger.info(`${present.length} students now marked as late arrival!`);
 
     if (absentStudents.size < 1) {
       logger.info(
