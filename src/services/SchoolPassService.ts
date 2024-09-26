@@ -49,6 +49,10 @@ export default class SchoolPassService {
           )
             return resolve([]);
 
+          logger.info(
+            `Fetching students from "${classroom.dismissalLocationName}" classroom`
+          );
+
           const attendance = await this.schoolpass.getStudentAttendance(
             classroom.dismissalLocationId,
             classroom.date

@@ -29,6 +29,20 @@ export default class AutomationService {
   }
 
   /**
+   * Adjusts a Moment.js time to have the current date
+   * @param date The Moment object to update
+   * @returns The new adjusted Moment object
+   */
+  private static adjustDate(date: moment.Moment): moment.Moment {
+    const current = moment();
+
+    return date
+      .year(current.year())
+      .month(current.month())
+      .date(current.date());
+  }
+
+  /**
    * Schedules the specified job
    * @param name The name of the job
    * @param spec The schedule to use
@@ -97,11 +111,11 @@ export default class AutomationService {
       `Found ${studentMap.size} students from SchoolPass with dismissal locations matching "${environment.schoolPass.dismissalLocationRegex}"`
     );
 
-    const start = environment.attendanceStart;
-    const end = environment.attendanceEnd;
+    const start = AutomationService.adjustDate(environment.attendanceStart);
+    const end = AutomationService.adjustDate(environment.attendanceEnd);
 
     logger.info(
-      `Querying Unifi Access door logs between ${start.toDate().toTimeString()} and ${end.toDate().toTimeString()}...`
+      `Querying Unifi Access door logs between ${start.toDate()} and ${end.toDate()}...`
     );
 
     const logs = await unifiAccess.getDoorLogs(start, end);
@@ -178,11 +192,11 @@ export default class AutomationService {
       `Recieved ${absentStudents.size} students still marked as absent`
     );
 
-    const start = environment.attendanceEnd;
+    const start = AutomationService.adjustDate(environment.attendanceEnd);
     const end = moment();
 
     logger.info(
-      `Querying Unifi Access door logs between ${start.toDate().toTimeString()} and ${end.toDate().toTimeString()}...`
+      `Querying Unifi Access door logs between ${start.toDate()} and ${end.toDate()}...`
     );
 
     const logs = await unifiAccess.getDoorLogs(start, end);
@@ -210,7 +224,7 @@ export default class AutomationService {
         absentStudents.delete(name);
       }
     }
-    
+
     logger.info(
       `Updated Attendance Report:\n\tNew Late Arrivals: ${present.length}`
     );
