@@ -15,6 +15,15 @@ export interface Student {
 }
 
 /**
+ * Outlines the results from marking student's attendance
+ */
+export interface MarkResult {
+  success: number;
+  failure: number;
+  total: number;
+}
+
+/**
  * Handles all interactions with the SchoolPass API
  */
 export default class SchoolPassService {
@@ -85,7 +94,7 @@ export default class SchoolPassService {
   async markStudents(
     type: StudentAttendanceType,
     students: Student[] | IterableIterator<Student>
-  ): Promise<void> {
+  ): Promise<MarkResult> {
     const promises: Promise<void>[] = [];
 
     for (const student of students) {
@@ -102,6 +111,26 @@ export default class SchoolPassService {
       );
     }
 
-    await Promise.all(promises);
+    const info = {
+      success: 0,
+      failure: 0,
+      total: 0
+    };
+
+    const results = await Promise.allSettled(promises);
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        info.failure++;
+
+        logger.error(`Error marking a student's attendance:`, result.reason);
+      } else {
+        info.success++;
+      }
+    }
+
+    info.total = results.length;
+
+    return info;
   }
 }

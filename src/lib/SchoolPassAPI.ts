@@ -175,6 +175,14 @@ export class SchoolPassAPI {
           await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
 
           return http(originalReq);
+        } else if (err.response?.status === 500) {
+          this.logger.warn("500 error encountered. Retrying request");
+
+          const retryAfter = 1000 + Math.floor(Math.random() * 2000);
+
+          await new Promise(resolve => setTimeout(resolve, retryAfter));
+
+          return http(originalReq);
         }
 
         throw err;

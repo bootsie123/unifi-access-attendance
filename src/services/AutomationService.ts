@@ -55,6 +55,10 @@ export default class AutomationService {
     jobFunc: JobCallback,
     runImmediately: boolean = !environment.production
   ): schedule.Job {
+    if (schedule.scheduledJobs[name]) {
+      this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
+    }
+
     const job = schedule.scheduleJob(name, spec, jobFunc);
 
     job
@@ -157,12 +161,24 @@ export default class AutomationService {
         `Attendance threshold of ${environment.unifi.threshold} met! Marking students as absent...`
       );
 
-      await schoolpass.markStudents(
+      const result = await schoolpass.markStudents(
         StudentAttendanceType.Absent,
         studentMap.values()
       );
 
-      logger.info(`${studentMap.size} students marked as absent!`);
+      if (result.success > 0) {
+        logger.info(
+          `${result.success}/${result.total} students successfully marked as absent!`
+        );
+      }
+
+      if (result.failure > 0) {
+        logger.error(
+          `Error marking ${result.failure}/${result.total} students as absent`
+        );
+      }
+
+      logger.info(`Scheduling "Late Arrivals" job...`);
 
       AutomationService.scheduleJob(
         "Late Arrivals Handler",
@@ -173,6 +189,10 @@ export default class AutomationService {
         AutomationService.handleLateArrivals.bind(this, studentMap),
         false
       );
+
+      return result.failure > 0
+        ? Promise.reject("Error marking students as absent")
+        : Promise.resolve();
     }
   }
 
