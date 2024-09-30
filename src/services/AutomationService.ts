@@ -53,8 +53,8 @@ export default class AutomationService {
     name: string,
     spec: schedule.Spec,
     jobFunc: JobCallback,
-    runImmediately: boolean = !environment.production
-  ): schedule.Job {
+    runImmediately: boolean = environment.runImmediately
+  ): schedule.Job | null {
     if (schedule.scheduledJobs[name]) {
       this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
 
@@ -62,6 +62,22 @@ export default class AutomationService {
     }
 
     const job = schedule.scheduleJob(name, spec, jobFunc);
+
+    if (job === null) {
+      const specObj = spec as schedule.RecurrenceSpecDateRange;
+
+      const date = new Date();
+
+      if (specObj && specObj.end && new Date(specObj.end) < date) {
+        this.scheduleLogger.warn(
+          `Job "${name}" is set to run in the past: ${specObj.end} vs ${date} | Skipping job...`
+        );
+      } else {
+        throw `Unable to create job "${name}"`;
+      }
+
+      return null;
+    }
 
     job
       .on("scheduled", (next: Date) => {

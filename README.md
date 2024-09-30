@@ -87,6 +87,7 @@ The following table shows the various configurations options which can be set an
 | SCHOOL_DISMISSAL_TIME               | String  | 3pm     | The time used for the late arrival cutoff (after this point students will stay absent) (see [Time Format](#time-format) for specifics) |
 | UPDATE_INTERVAL                     | Number  | 30      | The interval in minutes to update the attendance of students who are late arrivals                                                     |
 | DRY_RUN                             | Boolean | false   | Determines whether dry run mode is enabled. In dry run mode, no changes are made and instead logged to the console                     |
+| RUN_IMMEDIATELY | Boolean | true if running under development mode, otherwise false | Determines whether attendance should get updated right when the program runs or if it should wait for the next occurance in the schedule |
 
 ## Usage
 
