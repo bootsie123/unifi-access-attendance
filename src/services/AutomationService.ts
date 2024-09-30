@@ -57,6 +57,8 @@ export default class AutomationService {
   ): schedule.Job {
     if (schedule.scheduledJobs[name]) {
       this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
+
+      return schedule.scheduledJobs[name];
     }
 
     const job = schedule.scheduleJob(name, spec, jobFunc);
