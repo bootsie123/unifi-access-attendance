@@ -201,7 +201,7 @@ export default class AutomationService {
       AutomationService.scheduleJob(
         "Late Arrivals Handler",
         {
-          end: environment.schoolDismissal.toDate(),
+          end: AutomationService.adjustDate(environment.schoolDismissal).toDate(),
           rule: `*/${environment.updateInterval} * * * *`
         },
         AutomationService.handleLateArrivals.bind(this, studentMap),
