@@ -267,7 +267,7 @@ export default class AutomationService {
       `Updated Attendance Report:\n\tNew Late Arrivals: ${present.length}`
     );
 
-    await schoolpass.markStudents(StudentAttendanceType.Present, present);
+    await schoolpass.markStudents(StudentAttendanceType.LateArrival, present);
 
     logger.info(`${present.length} students now marked as late arrival!`);
 
