@@ -11,6 +11,11 @@ process.on("SIGINT", () => {
   schedule.gracefulShutdown().then(() => process.exit(0));
 });
 
+interface Actor {
+  name: string;
+  id: string;
+}
+
 /**
  * Allows for jobs to be scheduled and ran
  */
@@ -37,6 +42,7 @@ export default class AutomationService {
     const current = moment();
 
     return date
+      .local()
       .year(current.year())
       .month(current.month())
       .date(current.date());
@@ -53,7 +59,7 @@ export default class AutomationService {
     name: string,
     spec: schedule.Spec,
     jobFunc: JobCallback,
-    runImmediately: boolean = environment.runImmediately
+    runImmediately: boolean = false
   ): schedule.Job | null {
     if (schedule.scheduledJobs[name]) {
       this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
@@ -70,7 +76,7 @@ export default class AutomationService {
 
       if (specObj && specObj.end && new Date(specObj.end) < date) {
         this.scheduleLogger.warn(
-          `Job "${name}" is set to run in the past: ${specObj.end} vs ${date} | Skipping job...`
+          `Job "${name}" is set to run in the past: ${specObj.end} vs ${date} --> Skipping job!`
         );
       } else {
         throw `Unable to create job "${name}"`;
@@ -81,13 +87,13 @@ export default class AutomationService {
 
     job
       .on("scheduled", (next: Date) => {
-        this.scheduleLogger.info(`Next job scheduled for ${next}`);
+        this.scheduleLogger.info(`"${name}", next job scheduled for ${next}`);
       })
       .on("success", () => {
-        this.scheduleLogger.info("Job completed successfully!");
+        this.scheduleLogger.info(`Job "${name}" completed successfully!`);
       })
       .on("error", err => {
-        this.scheduleLogger.error("Error running job:", err);
+        this.scheduleLogger.error(`Error running "${name}" job:`, err);
       });
 
     if (runImmediately) {
@@ -99,11 +105,13 @@ export default class AutomationService {
         .invoke()
         // @ts-expect-error ts(2339)
         .then(() => {
-          this.scheduleLogger.info("Job completed successfully!");
+          this.scheduleLogger.info(
+            `Job "${name}" completed successfully! Next job scheduled for ${job.nextInvocation()}`
+          );
         })
         .catch((err: any) => {
           this.scheduleLogger.error(
-            "Error running job on first invocation:",
+            `Error running job "${name}" on first invocation:`,
             err
           );
         });
@@ -125,12 +133,12 @@ export default class AutomationService {
 
     const students = await schoolpass.getStudents();
 
-    const studentMap = new Map(
-      students.map(x => [x.fullName.toLowerCase(), x])
+    const studentIdMap = new Map(
+      students.map(student => [student.externalId, student])
     );
 
     logger.info(
-      `Found ${studentMap.size} students from SchoolPass with dismissal locations matching "${environment.schoolPass.dismissalLocationRegex}"`
+      `Found ${studentIdMap.size} students from SchoolPass with dismissal locations matching "${environment.schoolPass.dismissalLocationRegex}"`
     );
 
     const start = AutomationService.adjustDate(environment.attendanceStart);
@@ -141,8 +149,11 @@ export default class AutomationService {
     );
 
     const logs = await unifiAccess.getDoorLogs(start, end);
-    const actors = new Set(
-      logs.map(log => log._source.actor.display_name.toLowerCase())
+    const actors: Set<Actor> = new Set(
+      logs.map(log => ({
+        name: AutomationService.toTitleCase(log._source.actor.display_name),
+        id: log._source.actor.alternate_id
+      }))
     );
 
     logger.info(
@@ -151,19 +162,17 @@ export default class AutomationService {
 
     logger.info("Processing attendance...");
 
-    const totalStudents = studentMap.size;
+    const totalStudents = studentIdMap.size;
 
-    for (const name of actors) {
-      if (studentMap.has(name)) {
-        logger.debug(
-          `Marking ${AutomationService.toTitleCase(name)} as present!`
-        );
+    for (const actor of actors) {
+      if (studentIdMap.has(actor.id)) {
+        logger.debug(`Marking ${actor.name} as present!`);
 
-        studentMap.delete(name);
+        studentIdMap.delete(actor.id);
       }
     }
 
-    const absent = studentMap.size;
+    const absent = studentIdMap.size;
     const present = totalStudents - absent;
 
     logger.info(
@@ -174,44 +183,54 @@ export default class AutomationService {
       logger.warn(
         `Attendance threshold of ${environment.unifi.threshold} not met! No further action will be taken`
       );
-    } else {
-      logger.info(
-        `Attendance threshold of ${environment.unifi.threshold} met! Marking students as absent...`
-      );
 
-      const result = await schoolpass.markStudents(
-        StudentAttendanceType.Absent,
-        studentMap.values()
-      );
-
-      if (result.success > 0) {
-        logger.info(
-          `${result.success}/${result.total} students successfully marked as absent!`
-        );
-      }
-
-      if (result.failure > 0) {
-        logger.error(
-          `Error marking ${result.failure}/${result.total} students as absent`
-        );
-      }
-
-      logger.info(`Scheduling "Late Arrivals" job...`);
-
-      AutomationService.scheduleJob(
-        "Late Arrivals Handler",
-        {
-          end: AutomationService.adjustDate(environment.schoolDismissal).toDate(),
-          rule: `*/${environment.updateInterval} * * * *`
-        },
-        AutomationService.handleLateArrivals.bind(this, studentMap),
-        false
-      );
-
-      return result.failure > 0
-        ? Promise.reject("Error marking students as absent")
-        : Promise.resolve();
+      return;
     }
+
+    logger.info(
+      `Attendance threshold of ${environment.unifi.threshold} met! Marking students as absent...`
+    );
+
+    const result = await schoolpass.markStudents(
+      StudentAttendanceType.Absent,
+      studentIdMap.values()
+    );
+
+    if (result.success > 0) {
+      logger.info(
+        `${result.success}/${result.total} students successfully marked as absent!`
+      );
+    }
+
+    if (result.failure > 0) {
+      logger.error(
+        `Error marking ${result.failure}/${result.total} students as absent`
+      );
+    }
+
+    logger.info(`Scheduling "Late Arrivals" job...`);
+
+    const lateArrivalJob = AutomationService.scheduleJob(
+      "Late Arrivals Handler",
+      {
+        end: AutomationService.adjustDate(environment.schoolDismissal).toDate(),
+        rule: `*/${environment.updateInterval} * * * *`
+      },
+      AutomationService.handleLateArrivals.bind(this, studentIdMap),
+      false
+    );
+
+    if (lateArrivalJob) {
+      logger.info(
+        `"${lateArrivalJob.name}" next scheduled for ${lateArrivalJob.nextInvocation()}`
+      );
+    } else {
+      logger.error(`Unable to schedule the late arrivals handler!`);
+    }
+
+    return result.failure > 0
+      ? Promise.reject("Error marking students as absent")
+      : Promise.resolve();
   }
 
   /**
@@ -238,8 +257,12 @@ export default class AutomationService {
     );
 
     const logs = await unifiAccess.getDoorLogs(start, end);
-    const actors = new Set(
-      logs.map(log => log._source.actor.display_name.toLowerCase())
+
+    const actors: Set<Actor> = new Set(
+      logs.map(log => ({
+        name: AutomationService.toTitleCase(log._source.actor.display_name),
+        id: log._source.actor.alternate_id
+      }))
     );
 
     logger.info(
@@ -250,16 +273,14 @@ export default class AutomationService {
 
     const present: Student[] = [];
 
-    for (const name of actors) {
-      const student = absentStudents.get(name);
+    for (const actor of actors) {
+      const student = absentStudents.get(actor.id);
 
       if (student) {
-        logger.debug(
-          `Marking ${AutomationService.toTitleCase(name)} as late arrival!`
-        );
+        logger.debug(`Marking ${actor.name} as late arrival!`);
 
         present.push(student);
-        absentStudents.delete(name);
+        absentStudents.delete(actor.id);
       }
     }
 

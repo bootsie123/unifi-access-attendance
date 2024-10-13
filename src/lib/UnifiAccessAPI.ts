@@ -1,9 +1,8 @@
 import axios, { AxiosInstance } from "axios";
 import winston from "winston";
-import * as AxiosLogger from "axios-logger";
 import https from "https";
 
-import logger from "./Logger";
+import logger, { addAxiosLoggerInterceptors } from "./Logger";
 import environment from "../environment";
 
 /**
@@ -155,14 +154,7 @@ export class UnifiAccessAPI {
       })
     });
 
-    http.interceptors.request.use(
-      AxiosLogger.requestLogger,
-      AxiosLogger.errorLogger
-    );
-    http.interceptors.response.use(
-      AxiosLogger.responseLogger,
-      AxiosLogger.errorLogger
-    );
+    addAxiosLoggerInterceptors(http, this.logger);
 
     http.defaults.baseURL = new URL(
       "/api/v1/developer/",

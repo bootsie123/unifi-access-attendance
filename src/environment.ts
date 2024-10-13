@@ -1,10 +1,15 @@
 import "dotenv/config";
 import moment from "moment";
 
-const timeFormat = ["h:m a Z", "H:m Z", "h a Z", "H Z"];
+const timeFormat = ["h:m a Z", "H:m Z", "h a Z", "H Z", "ha Z", "h:ma Z"];
 
 export default {
   production: process.env.NODE_ENV === "production",
+  logLevel: (() => {
+    if (process.env.LOG_LEVEL) return process.env.LOG_LEVEL;
+
+    return process.env.NODE_ENV === "production" ? "info" : "debug";
+  })(),
   schoolPass: {
     username: process.env.SCHOOLPASS_USERNAME || "",
     password: process.env.SCHOOLPASS_PASSWORD || "",

@@ -1,3 +1,5 @@
+import NodeCache from "node-cache";
+
 import { SchoolPassAPI, StudentAttendanceType } from "../lib/SchoolPassAPI";
 import environment from "../environment";
 import logger from "../lib/Logger";
@@ -9,9 +11,11 @@ const dryRun = environment.dryRun;
  */
 export interface Student {
   studentId: number;
+  externalId: string;
   firstName: string;
   lastName: string;
   fullName: string;
+  attendanceStatus: string;
 }
 
 /**
@@ -28,6 +32,8 @@ export interface MarkResult {
  */
 export default class SchoolPassService {
   private schoolpass = new SchoolPassAPI();
+
+  private static cache = new NodeCache();
 
   /**
    * Initializes the service
@@ -67,16 +73,31 @@ export default class SchoolPassService {
             classroom.date
           );
 
-          resolve(
-            attendance.map(student => {
-              return {
-                studentId: student.studentId,
-                firstName: student.firstName,
-                lastName: student.lastName,
+          const students = [];
+
+          for (const student of attendance) {
+            let cached: Student | undefined = SchoolPassService.cache.get(
+              student.studentId
+            );
+
+            if (!cached) {
+              const profile = await this.schoolpass.getStudentProfile(
+                student.studentId
+              );
+
+              SchoolPassService.cache.set(student.studentId, profile);
+
+              cached = {
+                ...profile,
+                ...student,
                 fullName: `${student.firstName} ${student.lastName}`
-              };
-            })
-          );
+              } as Student;
+            }
+
+            students.push(cached);
+          }
+
+          resolve(students);
         })
       );
     }
@@ -98,6 +119,16 @@ export default class SchoolPassService {
     const promises: Promise<void>[] = [];
 
     for (const student of students) {
+      if (student.attendanceStatus === StudentAttendanceType.Absent) {
+        logger.info(
+          `Student "${student.fullName}" already marked as "${type}"`
+        );
+
+        promises.push(new Promise(res => res()));
+
+        continue;
+      }
+
       promises.push(
         dryRun
           ? new Promise(resolve => {
