@@ -1,8 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import winston from "winston";
-import * as AxiosLogger from "axios-logger";
 
-import logger from "./Logger";
+import logger, { addAxiosLoggerInterceptors } from "./Logger";
 
 const configURL = "https://schoolpass.cloud/assets/runtime.config.json";
 
@@ -83,6 +82,40 @@ export interface SchoolPassStudentAttendance {
   lastName: string;
   studentId: number;
   wellnessStatus: number;
+}
+
+/**
+ * Outlines a student's profile
+ */
+export interface SchoolPassStudentProfile {
+  notificationSettings: [
+    {
+      notificationMode: number;
+      userNotificationType: number;
+      allow: boolean;
+    }
+  ];
+  dismissalLocationId: number;
+  gradeId: number;
+  sitePrefix: string;
+  siteName: string;
+  quickPIN: string;
+  tags: unknown;
+  user: {
+    userType: number;
+    internalId: number;
+  };
+  firstName: string;
+  lastName: string;
+  dateOfBirth: unknown;
+  phoneNumber: unknown;
+  address: unknown;
+  email: string;
+  externalId: string;
+  created: unknown;
+  userDefinedField1: unknown;
+  optOutEmail: boolean;
+  quickPINForUser: unknown;
 }
 
 /**
@@ -189,26 +222,11 @@ export class SchoolPassAPI {
       }
     );
 
-    http.interceptors.request.use(
-      AxiosLogger.requestLogger,
-      AxiosLogger.errorLogger
-    );
-    http.interceptors.response.use(
-      AxiosLogger.responseLogger,
-      AxiosLogger.errorLogger
-    );
-
     this.http = http;
     this.homebaseHttp = axios.create();
 
-    this.homebaseHttp.interceptors.request.use(
-      AxiosLogger.requestLogger,
-      AxiosLogger.errorLogger
-    );
-    this.homebaseHttp.interceptors.response.use(
-      AxiosLogger.responseLogger,
-      AxiosLogger.errorLogger
-    );
+    addAxiosLoggerInterceptors(http, this.logger);
+    addAxiosLoggerInterceptors(this.homebaseHttp, this.logger);
   }
 
   /**
@@ -337,6 +355,23 @@ export class SchoolPassAPI {
    */
   async getAttendanceClassrooms(): Promise<SchoolPassClassroom[]> {
     const res = await this.http.get("classroom/getAllAttendanceInfo");
+
+    return res.data;
+  }
+
+  /**
+   * Retrieves a student's user profile
+   * @param studentId The id of the student
+   * @returns A {@link SchoolPassStudentProfile} object
+   */
+  async getStudentProfile(
+    studentId: number
+  ): Promise<SchoolPassStudentProfile> {
+    const res = await this.http.get("Student/profile", {
+      params: {
+        studentId
+      }
+    });
 
     return res.data;
   }
