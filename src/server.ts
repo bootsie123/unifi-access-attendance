@@ -18,5 +18,6 @@ AutomationService.scheduleJob(
     hour: environment.attendanceEnd.hour(),
     minute: environment.attendanceEnd.minute() + 1
   },
-  AutomationService.runAttendance
+  AutomationService.runAttendance,
+  environment.runImmediately
 );

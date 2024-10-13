@@ -15,6 +15,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   fullName: string;
+  attendanceStatus: string;
 }
 
 /**
@@ -118,6 +119,16 @@ export default class SchoolPassService {
     const promises: Promise<void>[] = [];
 
     for (const student of students) {
+      if (student.attendanceStatus === StudentAttendanceType.Absent) {
+        logger.info(
+          `Student "${student.fullName}" already marked as "${type}"`
+        );
+
+        promises.push(new Promise(res => res()));
+
+        continue;
+      }
+
       promises.push(
         dryRun
           ? new Promise(resolve => {

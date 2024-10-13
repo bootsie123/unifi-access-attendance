@@ -59,7 +59,7 @@ export default class AutomationService {
     name: string,
     spec: schedule.Spec,
     jobFunc: JobCallback,
-    runImmediately: boolean = environment.runImmediately
+    runImmediately: boolean = false
   ): schedule.Job | null {
     if (schedule.scheduledJobs[name]) {
       this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
