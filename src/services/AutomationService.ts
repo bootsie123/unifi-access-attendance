@@ -105,7 +105,9 @@ export default class AutomationService {
         .invoke()
         // @ts-expect-error ts(2339)
         .then(() => {
-          this.scheduleLogger.info(`Job "${name}" completed successfully!`);
+          this.scheduleLogger.info(
+            `Job "${name}" completed successfully! Next job scheduled for ${job.nextInvocation()}`
+          );
         })
         .catch((err: any) => {
           this.scheduleLogger.error(

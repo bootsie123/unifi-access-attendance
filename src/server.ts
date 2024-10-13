@@ -15,8 +15,8 @@ AutomationService.scheduleJob(
   "Automated Attendance",
   {
     dayOfWeek: new Range(1, 5),
-    hour: environment.attendanceEnd.hour(),
-    minute: environment.attendanceEnd.minute() + 1
+    hour: environment.attendanceEnd.local().hour(),
+    minute: environment.attendanceEnd.local().minute() + 1
   },
   AutomationService.runAttendance,
   environment.runImmediately
