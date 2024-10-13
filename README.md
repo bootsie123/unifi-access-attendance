@@ -126,6 +126,8 @@ Within the application, all time related strings are parsed using [Moment.js](ht
 - H:m Z
 - h a Z
 - H Z
+- ha Z
+- h:ma Z
 
 ### Symbol Meanings
 
