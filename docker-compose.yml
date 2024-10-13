@@ -3,10 +3,10 @@ services:
     build:
       context: ./
       target: production
-    ports:
-      - "3000:3000"
     environment:
       SCHOOLPASS_USERNAME:
       SCHOOLPASS_PASSWORD:
       UNIFI_ACCESS_SERVER: https://server:12445
       UNIFI_ACCESS_API_TOKEN:
+    volumes:
+      - ./logs:/usr/src/app/logs

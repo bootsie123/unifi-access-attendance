@@ -10,7 +10,7 @@
         "lint": "eslint \"**/*.{js,ts}\"",
         "lint:fix": "eslint --fix \"**/*.{js,ts}\"",
         "docker:build": "docker build -t unifi-access-attendance .",
-        "docker:run": "docker run -d -p 3000:3000 --name unifi-access-attendance unifi-access-attendance",
+        "docker:run": "docker run -d --name unifi-access-attendance unifi-access-attendance",
         "postdocker:build": "docker image prune -f --filter label=stage=intermediate"
     },
     "author": "John Arrandale",

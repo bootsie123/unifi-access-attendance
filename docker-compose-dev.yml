@@ -3,8 +3,6 @@ services:
     build:
       context: ./
       target: development
-    ports:
-      - "3000:3000"
     environment:
       SCHOOLPASS_USERNAME: username
       SCHOOLPASS_PASSWORD: password
@@ -16,4 +14,5 @@ services:
       ATTENDANCE_END: 8am
       SCHOOL_DISMISSAL_TIME: 3pm
       UPDATE_INTERVAL: 30
+      LOG_LEVEL: info
       DRY_RUN: true

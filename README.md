@@ -88,6 +88,7 @@ The following table shows the various configurations options which can be set an
 | UPDATE_INTERVAL                     | Number  | 30      | The interval in minutes to update the attendance of students who are late arrivals                                                     |
 | DRY_RUN                             | Boolean | false   | Determines whether dry run mode is enabled. In dry run mode, no changes are made and instead logged to the console                     |
 | RUN_IMMEDIATELY | Boolean | true if running under development mode, otherwise false | Determines whether attendance should get updated right when the program runs or if it should wait for the next occurance in the schedule |
+| LOG_LEVEL | String | debug if running under development mode, otherwise info | Determines the minimum severity of the output logs |
 
 ## Usage
 

@@ -11,7 +11,7 @@ process
     logger.error("Uncaught exception:", err);
   });
 
-AutomationService.scheduleJob(
+const job = AutomationService.scheduleJob(
   "Automated Attendance",
   {
     dayOfWeek: new Range(1, 5),
@@ -21,3 +21,11 @@ AutomationService.scheduleJob(
   AutomationService.runAttendance,
   environment.runImmediately
 );
+
+if (job) {
+  logger.info(
+    `Automated Attendance initially scheduled for ${job.nextInvocation()}`
+  );
+} else {
+  logger.error("Error! Unable to schedule Automated Attendance!");
+}

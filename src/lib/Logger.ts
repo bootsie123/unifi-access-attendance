@@ -13,7 +13,7 @@ import * as AxiosLogger from "axios-logger";
 import environment from "../environment";
 
 const logger = createLogger({
-  level: environment.production ? "info" : "debug",
+  level: environment.logLevel,
   format: format.json(),
   defaultMeta: {
     service: "unifi-access-attendance"
@@ -36,7 +36,7 @@ const logger = createLogger({
       )
     }),
     new transports.File({
-      filename: "attendance.log",
+      filename: "./logs/unifi-attendance.log",
       format: format.combine(format.timestamp(), format.json())
     })
   ]
