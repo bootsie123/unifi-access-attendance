@@ -52,7 +52,7 @@ export default class UnifiAccessService {
 
     const promises: Promise<UnifiAccessHit<UnifiAccessSystemLog>[]>[] = [];
 
-    for (; pageNum < Math.ceil(total / pageSize); pageNum++) {
+    for (; pageNum < Math.ceil(total / pageSize) + 1; pageNum++) {
       promises.push(
         new Promise(async resolve => {
           const data = await this.unifiAccess.getSystemLogs({

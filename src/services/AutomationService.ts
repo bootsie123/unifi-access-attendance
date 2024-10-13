@@ -42,6 +42,7 @@ export default class AutomationService {
     const current = moment();
 
     return date
+      .local()
       .year(current.year())
       .month(current.month())
       .date(current.date());
@@ -75,7 +76,7 @@ export default class AutomationService {
 
       if (specObj && specObj.end && new Date(specObj.end) < date) {
         this.scheduleLogger.warn(
-          `Job "${name}" is set to run in the past: ${specObj.end} vs ${date} | Skipping job...`
+          `Job "${name}" is set to run in the past: ${specObj.end} vs ${date} --> Skipping job!`
         );
       } else {
         throw `Unable to create job "${name}"`;
@@ -86,13 +87,13 @@ export default class AutomationService {
 
     job
       .on("scheduled", (next: Date) => {
-        this.scheduleLogger.info(`Next job scheduled for ${next}`);
+        this.scheduleLogger.info(`"${name}", next job scheduled for ${next}`);
       })
       .on("success", () => {
-        this.scheduleLogger.info("Job completed successfully!");
+        this.scheduleLogger.info(`Job "${name}" completed successfully!`);
       })
       .on("error", err => {
-        this.scheduleLogger.error("Error running job:", err);
+        this.scheduleLogger.error(`Error running "${name}" job:`, err);
       });
 
     if (runImmediately) {
@@ -104,11 +105,11 @@ export default class AutomationService {
         .invoke()
         // @ts-expect-error ts(2339)
         .then(() => {
-          this.scheduleLogger.info("Job completed successfully!");
+          this.scheduleLogger.info(`Job "${name}" completed successfully!`);
         })
         .catch((err: any) => {
           this.scheduleLogger.error(
-            "Error running job on first invocation:",
+            `Error running job "${name}" on first invocation:`,
             err
           );
         });
@@ -207,7 +208,7 @@ export default class AutomationService {
 
     logger.info(`Scheduling "Late Arrivals" job...`);
 
-    AutomationService.scheduleJob(
+    const lateArrivalJob = AutomationService.scheduleJob(
       "Late Arrivals Handler",
       {
         end: AutomationService.adjustDate(environment.schoolDismissal).toDate(),
@@ -216,6 +217,14 @@ export default class AutomationService {
       AutomationService.handleLateArrivals.bind(this, studentIdMap),
       false
     );
+
+    if (lateArrivalJob) {
+      logger.info(
+        `"${lateArrivalJob.name}" next scheduled for ${lateArrivalJob.nextInvocation()}`
+      );
+    } else {
+      logger.error(`Unable to schedule the late arrivals handler!`);
+    }
 
     return result.failure > 0
       ? Promise.reject("Error marking students as absent")
