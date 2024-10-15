@@ -31,6 +31,10 @@ export interface MarkResult {
  * Handles all interactions with the SchoolPass API
  */
 export default class SchoolPassService {
+  private static logger = logger.child({
+    label: "SchoolPassService"
+  });
+
   private schoolpass = new SchoolPassAPI();
 
   private static cache = new NodeCache();
@@ -64,7 +68,7 @@ export default class SchoolPassService {
           )
             return resolve([]);
 
-          logger.info(
+          SchoolPassService.logger.info(
             `Fetching students from "${classroom.dismissalLocationName}" classroom`
           );
 
@@ -120,7 +124,7 @@ export default class SchoolPassService {
 
     for (const student of students) {
       if (student.attendanceStatus === StudentAttendanceType.Absent) {
-        logger.info(
+        SchoolPassService.logger.debug(
           `Student "${student.fullName}" already marked as "${type}"`
         );
 
@@ -132,7 +136,7 @@ export default class SchoolPassService {
       promises.push(
         dryRun
           ? new Promise(resolve => {
-              logger.info(
+              SchoolPassService.logger.info(
                 `[DRY RUN] Student "${student.fullName}" marked as "${type}"`
               );
 
@@ -154,7 +158,10 @@ export default class SchoolPassService {
       if (result.status === "rejected") {
         info.failure++;
 
-        logger.error(`Error marking a student's attendance:`, result.reason);
+        SchoolPassService.logger.error(
+          `Error marking a student's attendance:`,
+          result.reason
+        );
       } else {
         info.success++;
       }

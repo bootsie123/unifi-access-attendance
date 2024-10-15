@@ -174,8 +174,8 @@ export class SchoolPassAPI {
       async err => {
         const originalReq = err.config;
 
-        if (err.response?.status === 401 && !originalReq._retry) {
-          originalReq._retry = true;
+        if (err.response?.status === 401 && !originalReq._retry401) {
+          originalReq._retry401 = true;
 
           this.logger.info(err.response.data);
 
@@ -208,10 +208,14 @@ export class SchoolPassAPI {
           await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
 
           return http(originalReq);
-        } else if (err.response?.status === 500) {
-          this.logger.warn("500 error encountered. Retrying request");
+        } else if (err.response?.status === 500 && originalReq._retry500 < 3) {
+          originalReq._retry500++;
 
-          const retryAfter = 1000 + Math.floor(Math.random() * 2000);
+          const retryAfter = 1000 + Math.floor(Math.random() * 10000);
+
+          this.logger.warn(
+            `500 error encountered. Retrying after ${retryAfter} seconds`
+          );
 
           await new Promise(resolve => setTimeout(resolve, retryAfter));
 
@@ -225,7 +229,7 @@ export class SchoolPassAPI {
     this.http = http;
     this.homebaseHttp = axios.create();
 
-    addAxiosLoggerInterceptors(http, this.logger);
+    addAxiosLoggerInterceptors(this.http, this.logger);
     addAxiosLoggerInterceptors(this.homebaseHttp, this.logger);
   }
 
