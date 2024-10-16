@@ -1,6 +1,10 @@
 import NodeCache from "node-cache";
 
-import { SchoolPassAPI, StudentAttendanceType } from "../lib/SchoolPassAPI";
+import {
+  SchoolPassAPI,
+  SchoolPassStudentProfile,
+  StudentAttendanceType
+} from "../lib/SchoolPassAPI";
 import environment from "../environment";
 import logger from "../lib/Logger";
 
@@ -80,25 +84,24 @@ export default class SchoolPassService {
           const students = [];
 
           for (const student of attendance) {
-            let cached: Student | undefined = SchoolPassService.cache.get(
-              student.studentId
-            );
+            let cachedProfile: SchoolPassStudentProfile | undefined =
+              SchoolPassService.cache.get(student.studentId);
 
-            if (!cached) {
+            if (!cachedProfile) {
               const profile = await this.schoolpass.getStudentProfile(
                 student.studentId
               );
 
               SchoolPassService.cache.set(student.studentId, profile);
 
-              cached = {
-                ...profile,
-                ...student,
-                fullName: `${student.firstName} ${student.lastName}`
-              } as Student;
+              cachedProfile = profile;
             }
 
-            students.push(cached);
+            students.push({
+              ...cachedProfile,
+              ...student,
+              fullName: `${student.firstName} ${student.lastName}`
+            });
           }
 
           resolve(students);
