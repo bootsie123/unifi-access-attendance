@@ -177,7 +177,10 @@ export class SchoolPassAPI {
         if (err.response?.status === 401 && !originalReq._retry401) {
           originalReq._retry401 = true;
 
-          this.logger.info(err.response.data);
+          this.logger.debug(
+            "401 error encountered. Authentication token possibly expired? Response:",
+            err.response
+          );
 
           this.logger.warn(
             "Authentication token possibly expired. Auto refreshing token..."
@@ -212,6 +215,13 @@ export class SchoolPassAPI {
           originalReq._retry500++;
 
           const retryAfter = 1000 + Math.floor(Math.random() * 10000);
+
+          this.logger.debug(
+            "500 error encountered. Response:",
+            err.response,
+            "Request:",
+            originalReq
+          );
 
           this.logger.warn(
             `500 error encountered. Retrying after ${retryAfter} seconds`

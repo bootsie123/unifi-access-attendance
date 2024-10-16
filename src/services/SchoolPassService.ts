@@ -123,7 +123,7 @@ export default class SchoolPassService {
     const promises: Promise<void>[] = [];
 
     for (const student of students) {
-      if (student.attendanceStatus === StudentAttendanceType.Absent) {
+      if (student.attendanceStatus === type) {
         SchoolPassService.logger.debug(
           `Student "${student.fullName}" already marked as "${type}"`
         );
