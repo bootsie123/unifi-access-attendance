@@ -61,10 +61,16 @@ export default class AutomationService {
     jobFunc: JobCallback,
     runImmediately: boolean = false
   ): schedule.Job | null {
-    if (schedule.scheduledJobs[name]) {
-      this.scheduleLogger.warn(`Job "${name}" already exists. Skipping job...`);
+    const existingJob = schedule.scheduledJobs[name];
+
+    if (existingJob?.pendingInvocations.length > 0) {
+      this.scheduleLogger.warn(
+        `Job "${name}" already exists and has pending invocations. Skipping job...`
+      );
 
       return schedule.scheduledJobs[name];
+    } else if (existingJob) {
+      existingJob.cancel();
     }
 
     const job = schedule.scheduleJob(name, spec, jobFunc);
@@ -292,12 +298,25 @@ export default class AutomationService {
 
     logger.info(`${present.length} students now marked as late arrival!`);
 
+    const job = schedule.scheduledJobs["Late Arrivals Handler"];
+
     if (absentStudents.size < 1) {
       logger.info(
-        "All students now marked present! Canceling future late arrival checks..."
+        "All students now marked present! Canceling future late arrival checks"
       );
 
-      schedule.scheduledJobs["Late Arrivals Handler"].cancel();
+      job.cancel();
+    }
+
+    if (
+      new Date() >
+      AutomationService.adjustDate(environment.schoolDismissal).toDate()
+    ) {
+      logger.info(
+        "School dissmial time reached. Caneling future late arrival checks"
+      );
+
+      job.cancel();
     }
   }
 }
