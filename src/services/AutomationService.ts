@@ -286,6 +286,7 @@ export default class AutomationService {
         logger.debug(`Marking ${actor.name} as late arrival!`);
 
         present.push(student);
+
         absentStudents.delete(actor.id);
       }
     }

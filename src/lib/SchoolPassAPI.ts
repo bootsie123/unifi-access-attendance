@@ -129,6 +129,126 @@ export enum StudentAttendanceType {
 }
 
 /**
+ * Specifies a student's arrival and dismissal calendar
+ */
+export interface StudentCalender {
+  dailyList: [
+    {
+      adType: number;
+      changeId: number;
+      changeSeriesId: number;
+      description: string;
+      isDefault: boolean;
+      moveToId: number;
+      studentChangeType: number;
+      timestamp: Date;
+    }
+  ];
+  siteId: number;
+  studentId: number;
+  wellnessStatus: number;
+}
+
+/**
+ * Specifies a new student dismissal change
+ */
+export interface StudentChangeCreate {
+  adType: number | null;
+  busStopId: number | null;
+  changeSeriesId: number;
+  changeType: number;
+  dateSet: {
+    dates: Date[];
+    daysOfWeek: number[];
+    endDate: string;
+    startDate: string;
+    recurringWeeks: number;
+  };
+  modifiedBy: number;
+  moveToId: number;
+  notes: string;
+  overwriteChanges: boolean;
+  pickupDropoffPerson: unknown;
+  studentId: number;
+  timeOfDay: unknown;
+  userType: number;
+  willReturn: unknown;
+}
+
+/**
+ * Specifies an existing student change
+ */
+export interface StudentChange {
+  changeType: number;
+  days: string;
+  description: string;
+  endDate: Date;
+  lastModifiedBy: string;
+  lastModifiedDate: Date;
+  notes: string;
+  occurenceIds: number[];
+  seriesId: number;
+  startDate: Date;
+}
+
+/**
+ * Specifies a parent's profile information
+ */
+export interface ParentProfile {
+  address: unknown;
+  carpool: {
+    carpoolNumber: string;
+    dateCreated: Date;
+    id: number;
+    name: string;
+    type: number;
+  };
+  created: Date;
+  custody: string;
+  dateOfBirth: unknown;
+  email: string;
+  externalId: string;
+  firstName: string;
+  homePhone: unknown;
+  lastName: string;
+  marital: number;
+  optOutEmail: boolean;
+  parentId: number;
+  parentVehicles: unknown;
+  phoneNumber: unknown;
+  primaryParentId: unknown;
+  quickPINForUser: unknown;
+  relationship: unknown;
+  user: {
+    internalId: number;
+    userType: number;
+  };
+  userDefinedField1: unknown;
+}
+
+/**
+ * Specifies a bus stop
+ */
+export interface BusStop {
+  id: number;
+  busId: number;
+  name: string;
+  sequence: number;
+}
+
+/**
+ * Specifies the number associated with a particular change type
+ */
+export enum StudentChangeType {
+  Abent = 1,
+  LateArrival = 2,
+  EarlyDismissal = 3,
+  Carpool = 4,
+  Activity = 5,
+  Bus = 6
+}
+
+/**
  * Responsible for handling all communication with the SchoolPass API
  */
 export class SchoolPassAPI {
@@ -349,6 +469,14 @@ export class SchoolPassAPI {
   }
 
   /**
+   * Gets the user ID of the API user
+   * @returns API user internal ID
+   */
+  getAPIUserId(): number {
+    return this.user.user.internalId;
+  }
+
+  /**
    * Retrieves info about a SchoolPass user
    * @param email The email address of the user
    * @returns A {@link SchoolPassUserInfo} object
@@ -430,5 +558,91 @@ export class SchoolPassAPI {
         }
       }
     );
+  }
+
+  /**
+   * Gets the arrival and dimissal plan for the given student
+   * @param studentId The id of the student
+   * @param startDate The start date the plan
+   * @param endDate The end date of the plan
+   * @returns A {@link StudentCalender} object containing the plan
+   */
+  async getStudentCalendar(
+    studentId: number,
+    startDate: Date,
+    endDate: Date
+  ): Promise<StudentCalender> {
+    const res = await this.http.get(`student/studentcalendar`, {
+      params: {
+        studentId,
+        startDate,
+        endDate
+      }
+    });
+
+    return res.data;
+  }
+
+  /**
+   * Creates a new student dismissal change
+   * @param parentMemberId The parent id of the student to make changes to
+   * @param change The dismissal change to make
+   */
+  async createStudentChange(
+    parentId: number,
+    change: StudentChangeCreate
+  ): Promise<void> {
+    await this.http.post("studentchange", change, {
+      params: {
+        schoolCode: this.schoolCode,
+        parentMemberId: parentId
+      }
+    });
+  }
+
+  /**
+   * Gets all of the dismissal changes associated with the student
+   * @param studentId The id of the student
+   * @returns An array of {@link StudentChange} objects
+   */
+  async getStudentChanges(studentId: number): Promise<StudentChange[]> {
+    const res = await this.http.get("v2/studentchange", {
+      params: {
+        schoolCode: this.schoolCode,
+        studentId
+      }
+    });
+
+    return res.data;
+  }
+
+  /**
+   * Gets one parent for a student
+   * @param studentId The id of the student
+   * @returns A {@link ParentProfile} object
+   */
+  async getStudentParent(studentId: number): Promise<ParentProfile> {
+    const res = await this.http.get("Student/GetParentOnes", {
+      params: {
+        studentId
+      }
+    });
+
+    return res.data;
+  }
+
+  /**
+   * Gets the bus stops associated with a bus
+   * @param busId The id of the bus
+   * @returns An array of {@link BusStop} objects
+   */
+  async getBusStops(busId: number): Promise<BusStop[]> {
+    const res = await this.http.get("bus/getstops", {
+      params: {
+        busId
+      }
+    });
+
+    return res.data;
   }
 }

@@ -3,10 +3,14 @@ import NodeCache from "node-cache";
 import {
   SchoolPassAPI,
   SchoolPassStudentProfile,
-  StudentAttendanceType
+  StudentAttendanceType,
+  StudentCalender,
+  StudentChange,
+  StudentChangeType
 } from "../lib/SchoolPassAPI";
 import environment from "../environment";
 import logger from "../lib/Logger";
+import moment from "moment";
 
 const dryRun = environment.dryRun;
 
@@ -29,6 +33,14 @@ export interface MarkResult {
   success: number;
   failure: number;
   total: number;
+}
+
+/**
+ * Outlines a student change which has been cached
+ */
+interface CachedChange {
+  change: StudentCalender["dailyList"][0];
+  series: StudentChange;
 }
 
 /**
@@ -125,6 +137,18 @@ export default class SchoolPassService {
   ): Promise<MarkResult> {
     const promises: Promise<void>[] = [];
 
+    const day = moment().startOf("day");
+
+    if (day.day() === 0 || day.day() === 6) {
+      SchoolPassService.logger.debug(
+        `Current day is ${day.format("dddd")}, setting to Monday for testing purposes`
+      );
+
+      day.day(1);
+    }
+
+    const currentDay = day.toDate();
+
     for (const student of students) {
       if (student.attendanceStatus === type) {
         SchoolPassService.logger.debug(
@@ -134,6 +158,35 @@ export default class SchoolPassService {
         promises.push(new Promise(res => res()));
 
         continue;
+      }
+
+      const changeKey = `${student.studentId}-change`;
+
+      if (type === StudentAttendanceType.Absent) {
+        const calendar = await this.schoolpass.getStudentCalendar(
+          student.studentId,
+          currentDay,
+          currentDay
+        );
+
+        const change = calendar.dailyList[calendar.dailyList.length - 1];
+
+        const changes = await this.schoolpass.getStudentChanges(
+          student.studentId
+        );
+
+        if (change.isDefault || change.changeSeriesId === null) {
+          SchoolPassService.logger.debug(
+            `Student "${student.fullName}" is currently set to their default dismissal location or no change series ID was found. Skipping caching`
+          );
+        } else {
+          SchoolPassService.cache.set(changeKey, {
+            series: changes.find(
+              series => series.seriesId === change.changeSeriesId
+            ),
+            change
+          });
+        }
       }
 
       promises.push(
@@ -147,6 +200,70 @@ export default class SchoolPassService {
             })
           : this.schoolpass.setStudentAttendance(type, student.studentId)
       );
+
+      const cachedChange: CachedChange | undefined =
+        SchoolPassService.cache.get(changeKey);
+
+      // Patches student changes from being marked as absent
+      // Current works for the following change types: bus
+      if (
+        type !== StudentAttendanceType.Absent &&
+        cachedChange &&
+        cachedChange.change.studentChangeType in [StudentChangeType.Bus]
+      ) {
+        const { change, series } = cachedChange;
+
+        let busStopId = null;
+
+        if (change.studentChangeType === StudentChangeType.Bus) {
+          const busStops = await this.schoolpass.getBusStops(change.moveToId);
+
+          busStopId = busStops[0].id;
+        }
+
+        SchoolPassService.logger.info(
+          `Student "${student.fullName}" being marked as "${type}" from absent. Patching student changes`
+        );
+
+        const currentDate = day.format("YYYY-MM-DD");
+
+        const modifiedBy = this.schoolpass.getAPIUserId();
+
+        const data = {
+          adType: change.adType,
+          busStopId,
+          changeSeriesId: change.changeSeriesId,
+          changeType: change.studentChangeType,
+          dateSet: {
+            dates: [],
+            daysOfWeek: [day.day()],
+            endDate: currentDate,
+            startDate: currentDate,
+            recurringWeeks: 1
+          },
+          modifiedBy,
+          moveToId: change.moveToId,
+          notes: series?.notes || change.description,
+          overwriteChanges: true,
+          studentId: student.studentId,
+          userType: 4,
+          pickupDropoffPerson: undefined,
+          timeOfDay: undefined,
+          willReturn: undefined
+        };
+
+        try {
+          await this.schoolpass.createStudentChange(modifiedBy, data);
+        } catch (err) {
+          SchoolPassService.logger.error(
+            `Error patching student change for "${student.fullName}"`,
+            err,
+            data
+          );
+        }
+
+        SchoolPassService.cache.del(changeKey);
+      }
     }
 
     const info = {
