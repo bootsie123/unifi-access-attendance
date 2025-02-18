@@ -1,6 +1,6 @@
 {
     "name": "unifi-access-attendance",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "An automated way to handle daily attendance using badge scans from Unifi Access with SchoolPass",
     "scripts": {
         "start": "node dist/server.js",
