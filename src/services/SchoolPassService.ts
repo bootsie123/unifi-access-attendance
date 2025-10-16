@@ -30,8 +30,8 @@ export interface Student {
  * Outlines the results from marking student's attendance
  */
 export interface MarkResult {
-  success: number;
-  failure: number;
+  success: Student[];
+  failure: Student[];
   total: number;
 }
 
@@ -135,7 +135,7 @@ export default class SchoolPassService {
     type: StudentAttendanceType,
     students: Student[] | IterableIterator<Student>
   ): Promise<MarkResult> {
-    const promises: Promise<void>[] = [];
+    const promises: Promise<Student>[] = [];
 
     const day = moment().startOf("day");
 
@@ -155,7 +155,7 @@ export default class SchoolPassService {
           `Student "${student.fullName}" already marked as "${type}"`
         );
 
-        promises.push(new Promise(res => res()));
+        promises.push(new Promise(res => res(student)));
 
         continue;
       }
@@ -196,9 +196,23 @@ export default class SchoolPassService {
                 `[DRY RUN] Student "${student.fullName}" marked as "${type}"`
               );
 
-              resolve();
+              resolve(student);
             })
-          : this.schoolpass.setStudentAttendance(type, student.studentId)
+          : new Promise(async (resolve, reject) => {
+              try {
+                await this.schoolpass.setStudentAttendance(
+                  type,
+                  student.studentId
+                );
+
+                resolve(student);
+              } catch (err) {
+                reject({
+                  error: err,
+                  student
+                });
+              }
+            })
       );
 
       const cachedChange: CachedChange | undefined =
@@ -266,9 +280,9 @@ export default class SchoolPassService {
       }
     }
 
-    const info = {
-      success: 0,
-      failure: 0,
+    const info: MarkResult = {
+      success: [],
+      failure: [],
       total: 0
     };
 
@@ -276,14 +290,14 @@ export default class SchoolPassService {
 
     for (const result of results) {
       if (result.status === "rejected") {
-        info.failure++;
-
         SchoolPassService.logger.error(
           `Error marking a student's attendance:`,
-          result.reason
+          result.reason.error
         );
+
+        info.failure.push(result.reason.student);
       } else {
-        info.success++;
+        info.success.push(result.value);
       }
     }
 

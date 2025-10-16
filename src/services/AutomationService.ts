@@ -202,13 +202,13 @@ export default class AutomationService {
       studentIdMap.values()
     );
 
-    if (result.success > 0) {
+    if (result.success.length > 0) {
       logger.info(
-        `${result.success}/${result.total} students successfully marked as absent!`
+        `${result.success.length}/${result.total} students successfully marked as absent!`
       );
     }
 
-    if (result.failure > 0) {
+    if (result.failure.length > 0) {
       logger.error(
         `Error marking ${result.failure}/${result.total} students as absent`
       );
@@ -234,7 +234,7 @@ export default class AutomationService {
       logger.error(`Unable to schedule the late arrivals handler!`);
     }
 
-    return result.failure > 0
+    return result.failure.length > 0
       ? Promise.reject("Error marking students as absent")
       : Promise.resolve();
   }
@@ -286,8 +286,6 @@ export default class AutomationService {
         logger.debug(`Marking ${actor.name} as late arrival!`);
 
         present.push(student);
-
-        absentStudents.delete(actor.id);
       }
     }
 
@@ -295,9 +293,22 @@ export default class AutomationService {
       `Updated Attendance Report:\n\tNew Late Arrivals: ${present.length}`
     );
 
-    await schoolpass.markStudents(StudentAttendanceType.LateArrival, present);
+    const results = await schoolpass.markStudents(
+      StudentAttendanceType.LateArrival,
+      present
+    );
 
-    logger.info(`${present.length} students now marked as late arrival!`);
+    for (const student of results.success) {
+      absentStudents.delete(student.externalId);
+    }
+
+    if (results.failure.length > 0) {
+      logger.warn(`${results.failure.length} students failed to update!`);
+    }
+
+    logger.info(
+      `${results.success.length} students successfully marked as late arrival!`
+    );
 
     const job = schedule.scheduledJobs["Late Arrivals Handler"];
 
