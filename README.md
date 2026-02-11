@@ -8,7 +8,7 @@ An automated way to handle daily attendance using badge scans from Unifi Access 
 
 Simply install the application, configure the settings to your liking, and watch it go! Any badge scans made inside of the `ATTENDANCE_START` and `ATTENDANCE_END` window will cause the matching student in SchoolPass to remain present while everyone else will get marked as absent. If a student is absent and scans in after the window but before the `SCHOOL_DISMISSAL_TIME`, they will get marked as a late arrival.
 
-**_Note: Student names within Unifi Access must also match to their name in SchoolPass_**
+**_Note: In Unifi Access, the `Employee ID` of each student must also match the `External ID` for that student in SchoolPass_**
 
 ## Features
 
