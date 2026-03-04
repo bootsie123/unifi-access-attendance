@@ -74,21 +74,22 @@ In order to run the app, the following configuration options must be set in the 
 
 The following table shows the various configurations options which can be set and their default values. These settings can be set in the `.env` file (for local deployment) or within `docker-compose.yml` if using Docker Compose.
 
-| Name                                | Type    | Default | Description                                                                                                                            |
-| ----------------------------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| SCHOOLPASS_USERNAME                 | String  |         | The username of the user used to authenticate in SchoolPass                                                                            |
-| SCHOOLPASS_PASSWORD                 | String  |         | The password of the user used to authenticate in SchoolPass                                                                            |
-| SCHOOLPASS_DISMISSAL_LOCATION_REGEX | String  |         | A regular expression used to filter applicable students by dismissal location                                                          |
-| UNIFI_ACCESS_SERVER                 | String  |         | The URL to the Unifi Access application (typically https://device_ip:12445)                                                            |
-| UNIFI_ACCESS_API_TOKEN              | String  |         | The API token to use for Unifi Access (must have System Log -> View permissions)                                                       |
-| UNIFI_ACCESS_THRESHOLD              | Number  | 10      | The minimum number of students which need to be present in order for attendance to be taken                                            |
-| ATTENDANCE_START                    | String  | 6am     | The start time of the attendance window (see [Time Format](#time-format) for specifics)                                                |
-| ATTENDANCE_END                      | String  | 8am     | The end time of the attendance window (see [Time Format](#time-format) for specifics)                                                  |
-| SCHOOL_DISMISSAL_TIME               | String  | 3pm     | The time used for the late arrival cutoff (after this point students will stay absent) (see [Time Format](#time-format) for specifics) |
-| UPDATE_INTERVAL                     | Number  | 30      | The interval in minutes to update the attendance of students who are late arrivals                                                     |
-| DRY_RUN                             | Boolean | false   | Determines whether dry run mode is enabled. In dry run mode, no changes are made and instead logged to the console                     |
-| RUN_IMMEDIATELY | Boolean | true if running under development mode, otherwise false | Determines whether attendance should get updated right when the program runs or if it should wait for the next occurance in the schedule |
-| LOG_LEVEL | String | debug if running under development mode, otherwise info | Determines the minimum severity of the output logs |
+| Name                                | Type    | Default                                                 | Description                                                                                                                              |
+| ----------------------------------- | ------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| SCHOOLPASS_USERNAME                 | String  |                                                         | The username of the user used to authenticate in SchoolPass                                                                              |
+| SCHOOLPASS_PASSWORD                 | String  |                                                         | The password of the user used to authenticate in SchoolPass                                                                              |
+| SCHOOLPASS_DISMISSAL_LOCATION_REGEX | String  |                                                         | A regular expression used to filter applicable students by dismissal location                                                            |
+| UNIFI_ACCESS_SERVER                 | String  |                                                         | The URL to the Unifi Access application (typically https://device_ip:12445)                                                              |
+| UNIFI_ACCESS_API_TOKEN              | String  |                                                         | The API token to use for Unifi Access (must have System Log -> View permissions)                                                         |
+| UNIFI_ACCESS_THRESHOLD              | Number  | 10                                                      | The minimum number of students which need to be present in order for attendance to be taken                                              |
+| ATTENDANCE_START                    | String  | 6am                                                     | The start time of the attendance window (see [Time Format](#time-format) for specifics)                                                  |
+| ATTENDANCE_END                      | String  | 8am                                                     | The end time of the attendance window (see [Time Format](#time-format) for specifics)                                                    |
+| SCHOOL_DISMISSAL_TIME               | String  | 3pm                                                     | The time used for the late arrival cutoff (after this point students will stay absent) (see [Time Format](#time-format) for specifics)   |
+| UPDATE_INTERVAL                     | Number  | 30                                                      | The interval in minutes to update the attendance of students who are late arrivals                                                       |
+| API_PORT                            | Number  | 8080                                                    | The port to use for the REST API server                                                                                                  |
+| DRY_RUN                             | Boolean | false                                                   | Determines whether dry run mode is enabled. In dry run mode, no changes are made and instead logged to the console                       |
+| RUN_IMMEDIATELY                     | Boolean | true if running under development mode, otherwise false | Determines whether attendance should get updated right when the program runs or if it should wait for the next occurance in the schedule |
+| LOG_LEVEL                           | String  | debug if running under development mode, otherwise info | Determines the minimum severity of the output logs                                                                                       |
 
 ## Usage
 
@@ -116,6 +117,53 @@ To see all logs, simply run:
 
 ```bash
 docker compose logs -f
+```
+
+### REST API Server
+
+By default the REST API server uses port `8080`. This can be reconfigured depending on your needs using either the `API_PORT` environment variable or by changing the port mapping in the Docker compose file. The currently supported endpoints can be found below:
+
+#### GET /health
+
+Retreives the current health/status of the server. Right now the server only responds with a `200` status. This may change in future updates.
+
+##### Request
+
+None
+
+##### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+#### POST /attendance/start
+
+Manually starts an attendance job using with the given settings. All values are optional and will default to their respective environment variable.
+
+##### Request
+
+The following data can be send through query parameters or via JSON in the request body:
+
+```json
+{
+  "dismissalLocationRegex": "See SCHOOLPASS_DISMISSAL_LOCATION_REGEX",
+  "attendanceStart": "See ATTENDANCE_START",
+  "attendanceEnd": "See ATTENDANCE_END",
+  "unifiThreshold": "See UNIFI_ACCESS_THRESHOLD",
+  "schoolDismissal": "See SCHOOL_DISMISSAL_TIME",
+  "updateInterval": "See UPDATE_INTERVAL"
+}
+```
+
+##### Response
+
+```json
+{
+  "status": "Job started"
+}
 ```
 
 ## Time Format

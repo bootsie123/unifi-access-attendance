@@ -2,6 +2,7 @@ import { Range } from "node-schedule";
 import environment from "./environment";
 import logger from "./lib/Logger";
 import AutomationService from "./services/AutomationService";
+import APIService from "./services/APIService";
 
 process
   .on("unhandledRejection", (reason, promise) => {
@@ -18,7 +19,7 @@ const job = AutomationService.scheduleJob(
     hour: environment.attendanceEnd.local().hour(),
     minute: environment.attendanceEnd.local().minute() + 1
   },
-  AutomationService.runAttendance,
+  AutomationService.runAttendance.bind(this, {}),
   environment.runImmediately
 );
 
@@ -29,3 +30,5 @@ if (job) {
 } else {
   logger.error("Error! Unable to schedule Automated Attendance!");
 }
+
+APIService.start();

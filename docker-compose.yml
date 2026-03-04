@@ -4,6 +4,8 @@ services:
     build:
       context: ./
       target: production
+    ports:
+      - 8080:8080
     environment:
       SCHOOLPASS_USERNAME:
       SCHOOLPASS_PASSWORD:

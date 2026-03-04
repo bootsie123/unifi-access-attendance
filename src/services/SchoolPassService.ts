@@ -67,9 +67,13 @@ export default class SchoolPassService {
 
   /**
    * Retrieves students from SchoolPass
+   * @param dismissalLocationRegex Regular express used for filtering dismissal locations
    * @returns An array of {@link Student} objects
    */
-  async getStudents(): Promise<Student[]> {
+  async getStudents(
+    dismissalLocationRegex: string = environment.schoolPass
+      .dismissalLocationRegex
+  ): Promise<Student[]> {
     const classrooms = await this.schoolpass.getAttendanceClassrooms();
 
     const promises: Promise<Student[]>[] = [];
@@ -78,9 +82,7 @@ export default class SchoolPassService {
       promises.push(
         new Promise<Student[]>(async resolve => {
           if (
-            classroom.dismissalLocationName.search(
-              environment.schoolPass.dismissalLocationRegex
-            ) < 0
+            classroom.dismissalLocationName.search(dismissalLocationRegex) < 0
           )
             return resolve([]);
 

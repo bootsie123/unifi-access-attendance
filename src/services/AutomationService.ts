@@ -11,9 +11,25 @@ process.on("SIGINT", () => {
   schedule.gracefulShutdown().then(() => process.exit(0));
 });
 
+/**
+ * Defines an Actor within the Unifi Access logs
+ */
 interface Actor {
   name: string;
   id: string;
+}
+
+/**
+ * User definable options when running an attandance job
+ */
+export interface AttendanceOptions {
+  dismissalLocationRegex?: string;
+  attendanceStart?: moment.Moment;
+  attendanceEnd?: moment.Moment;
+  unifiThreshold?: number;
+  schoolDismissal?: moment.Moment;
+  updateInterval?: number;
+  replaceExistingJobs?: boolean;
 }
 
 /**
@@ -53,17 +69,20 @@ export default class AutomationService {
    * @param name The name of the job
    * @param spec The schedule to use
    * @param jobFunc The function to invoke
+   * @param runImmediately Determines if a job runs immediately after its scheduled
+   * @param replaceExisting Determines if the new job should replace any existing jobs of the same name
    * @returns The scheduled job
    */
   static scheduleJob(
     name: string,
     spec: schedule.Spec,
     jobFunc: JobCallback,
-    runImmediately: boolean = false
+    runImmediately: boolean = false,
+    replaceExisting: boolean = false
   ): schedule.Job | null {
     const existingJob = schedule.scheduledJobs[name];
 
-    if (existingJob?.pendingInvocations.length > 0) {
+    if (existingJob?.pendingInvocations.length > 0 && !replaceExisting) {
       this.scheduleLogger.warn(
         `Job "${name}" already exists and has pending invocations. Skipping job...`
       );
@@ -128,27 +147,46 @@ export default class AutomationService {
 
   /**
    * The automated attendance job
+   * @param userOptions User definable options for the attendance job
    */
-  static async runAttendance(): Promise<void> {
+  static async runAttendance(
+    userOptions: AttendanceOptions = {}
+  ): Promise<void> {
     const schoolpass = new SchoolPassService();
     const unifiAccess = new UnifiAccessService();
+
+    const options = {
+      dismissalLocationRegex:
+        userOptions.dismissalLocationRegex ||
+        environment.schoolPass.dismissalLocationRegex,
+      attendanceStart:
+        userOptions.attendanceStart || environment.attendanceStart,
+      attendanceEnd: userOptions.attendanceEnd || environment.attendanceEnd,
+      unifiThreshold: userOptions.unifiThreshold || environment.unifi.threshold,
+      schoolDismissal:
+        userOptions.schoolDismissal || environment.schoolDismissal,
+      updateInterval: userOptions.updateInterval || environment.updateInterval,
+      replaceExistingJobs: userOptions.replaceExistingJobs || false
+    };
 
     await schoolpass.init();
 
     logger.info(`Fetching students from SchoolPass...`);
 
-    const students = await schoolpass.getStudents();
+    const students = await schoolpass.getStudents(
+      options.dismissalLocationRegex
+    );
 
     const studentIdMap = new Map(
       students.map(student => [student.externalId, student])
     );
 
     logger.info(
-      `Found ${studentIdMap.size} students from SchoolPass with dismissal locations matching "${environment.schoolPass.dismissalLocationRegex}"`
+      `Found ${studentIdMap.size} students from SchoolPass with dismissal locations matching "${options.dismissalLocationRegex}"`
     );
 
-    const start = AutomationService.adjustDate(environment.attendanceStart);
-    const end = AutomationService.adjustDate(environment.attendanceEnd);
+    const start = AutomationService.adjustDate(options.attendanceStart);
+    const end = AutomationService.adjustDate(options.attendanceEnd);
 
     logger.info(
       `Querying Unifi Access door logs between ${start.toDate()} and ${end.toDate()}...`
@@ -185,16 +223,16 @@ export default class AutomationService {
       `Attendance Report:\n\tPresent: ${present}\n\tAbsent: ${absent}`
     );
 
-    if (present < environment.unifi.threshold) {
+    if (present < options.unifiThreshold) {
       logger.warn(
-        `Attendance threshold of ${environment.unifi.threshold} not met! No further action will be taken`
+        `Attendance threshold of ${options.unifiThreshold} not met! No further action will be taken`
       );
 
       return;
     }
 
     logger.info(
-      `Attendance threshold of ${environment.unifi.threshold} met! Marking students as absent...`
+      `Attendance threshold of ${options.unifiThreshold} met! Marking students as absent...`
     );
 
     const result = await schoolpass.markStudents(
@@ -219,11 +257,12 @@ export default class AutomationService {
     const lateArrivalJob = AutomationService.scheduleJob(
       "Late Arrivals Handler",
       {
-        end: AutomationService.adjustDate(environment.schoolDismissal).toDate(),
-        rule: `*/${environment.updateInterval} * * * *`
+        end: AutomationService.adjustDate(options.schoolDismissal).toDate(),
+        rule: `*/${options.updateInterval} * * * *`
       },
-      AutomationService.handleLateArrivals.bind(this, studentIdMap),
-      false
+      AutomationService.handleLateArrivals.bind(this, studentIdMap, options),
+      false,
+      options.replaceExistingJobs
     );
 
     if (lateArrivalJob) {
@@ -242,9 +281,11 @@ export default class AutomationService {
   /**
    * Finds late arrivals and updates their attendance in SchoolPass
    * @param absentStudents A map of students currentl marked absent
+   * @param options User definable options
    */
   private static async handleLateArrivals(
-    absentStudents: Map<string, Student>
+    absentStudents: Map<string, Student>,
+    options: AttendanceOptions = {}
   ): Promise<void> {
     const schoolpass = new SchoolPassService();
     const unifiAccess = new UnifiAccessService();
@@ -255,7 +296,9 @@ export default class AutomationService {
       `Recieved ${absentStudents.size} students still marked as absent`
     );
 
-    const start = AutomationService.adjustDate(environment.attendanceEnd);
+    const start = AutomationService.adjustDate(
+      options.attendanceEnd || environment.attendanceEnd
+    );
     const end = moment();
 
     logger.info(
@@ -322,7 +365,9 @@ export default class AutomationService {
 
     if (
       new Date() >
-      AutomationService.adjustDate(environment.schoolDismissal).toDate()
+      AutomationService.adjustDate(
+        options.schoolDismissal || environment.schoolDismissal
+      ).toDate()
     ) {
       logger.info(
         "School dissmial time reached. Caneling future late arrival checks"
